@@ -23,6 +23,12 @@ export function AppShell({ children }: AppShellProps) {
               </p>
             </div>
           </div>
+          <div className="hidden text-right text-[10px] text-slate-500 sm:block">
+            <p className="font-medium text-slate-400">Yapi: Koti42</p>
+            <p className="text-[10px]">
+              LinkedIn: Mehmet Kucukcelebi
+            </p>
+          </div>
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">

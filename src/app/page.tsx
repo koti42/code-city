@@ -1,9 +1,10 @@
- "use client";
+"use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { AppShell } from "@/components/ui/AppShell";
 import { CityScene } from "@/components/3d/CityScene";
 import { CodeModal } from "@/components/ui/CodeModal";
+import { IntroModal } from "@/components/ui/IntroModal";
 import { MOCK_REPO_TREE } from "@/lib/github/mock";
 import {
   buildRepoTree,
@@ -11,7 +12,7 @@ import {
   getExtensionFromPath,
   type RepoTreeNode,
 } from "@/lib/github";
-import { Loader2, TriangleAlert } from "lucide-react";
+import { Loader2, Search, TriangleAlert } from "lucide-react";
 
 export default function Home() {
   const [input, setInput] = useState("facebook/react");
@@ -27,6 +28,18 @@ export default function Home() {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [fileModalOpen, setFileModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<string[]>([]);
+
+  const [showIntro, setShowIntro] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem("code-city-intro-seen");
+    if (!seen) {
+      setShowIntro(true);
+    }
+  }, []);
 
   const handleGenerate = () => {
     const trimmed = input.trim();
@@ -119,6 +132,26 @@ export default function Home() {
       })()
     : undefined;
 
+  const handleSearch = () => {
+    if (!tree || !search.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const term = search.trim().toLowerCase();
+    const matches: string[] = [];
+
+    const walk = (node: RepoTreeNode) => {
+      if (node.type === "blob" && node.name.toLowerCase().includes(term)) {
+        matches.push(node.path);
+      }
+      node.children?.forEach(walk);
+    };
+
+    walk(tree);
+    setSearchResults(matches);
+  };
+
   return (
     <AppShell>
       <section className="flex flex-col gap-6">
@@ -137,67 +170,115 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="relative h-[480px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 shadow-2xl shadow-emerald-500/10">
-          {/* 3D City */}
-          {tree && <CityScene root={tree} onFileClick={handleFileClick} />}
-
-          {/* Overlay UI */}
-          <div className="pointer-events-none absolute inset-0 flex items-start justify-center">
-            <div className="pointer-events-auto mt-6 w-full max-w-xl rounded-2xl border border-white/5 bg-slate-950/85 p-4 shadow-lg shadow-black/40 backdrop-blur">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                    GitHub Reposu
-                  </label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-500">
-                      owner/repo
-                    </span>
-                    <input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleGenerate();
-                        }
-                      }}
-                      className="h-10 w-full rounded-xl border border-slate-700/70 bg-slate-900/80 pl-24 pr-3 text-sm text-slate-100 outline-none ring-0 transition hover:border-slate-400/70 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                      placeholder="facebook/react"
-                    />
-                  </div>
+        {/* Kontrol paneli (3D kartin USTUNDE) */}
+        <div className="w-full max-w-xl rounded-2xl border border-white/5 bg-slate-950/85 p-4 shadow-lg shadow-black/40 backdrop-blur">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                  GitHub Reposu
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-xs text-slate-500">
+                    owner/repo
+                  </span>
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleGenerate();
+                      }
+                    }}
+                    className="h-10 w-full rounded-xl border border-slate-700/70 bg-slate-900/80 pl-24 pr-3 text-sm text-slate-100 outline-none ring-0 transition hover:border-slate-400/70 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                    placeholder="facebook/react"
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={isPending}
-                  className="mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-6"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Yukleniyor...
-                    </>
-                  ) : (
-                    <>Sehri Olustur</>
-                  )}
-                </button>
               </div>
-
-              {error && (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/70 px-3 py-2 text-xs text-red-100">
-                  <TriangleAlert className="h-3.5 w-3.5" />
-                  <span>{error}</span>
+              <div>
+                <label className="mb-1 block text-[10px] font-medium uppercase tracking-[0.22em] text-slate-500">
+                  Dosya Arama
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearch();
+                      }
+                    }}
+                    className="h-8 flex-1 rounded-xl border border-slate-700/70 bg-slate-900/80 px-3 text-xs text-slate-100 outline-none ring-0 transition hover:border-slate-400/70 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                    placeholder="component, layout, index..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSearch}
+                    className="inline-flex h-8 items-center justify-center gap-1 rounded-xl border border-emerald-500/60 bg-emerald-500/10 px-2.5 text-[11px] font-medium text-emerald-200 shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-500/20"
+                  >
+                    <Search className="h-3 w-3" />
+                    Ara
+                  </button>
                 </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isPending}
+              className="mt-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 text-sm font-medium text-emerald-950 shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70 sm:mt-0"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Yukleniyor...
+                </>
+              ) : (
+                <>Sehri Olustur</>
               )}
+            </button>
+          </div>
 
-              {!error && !isPending && (
-                <p className="mt-3 text-[11px] text-slate-500">
-                  Ipuçlari: Kucuk/orta boyutlu bir repo secmeye calis. Cok buyuk
-                  monorepolar (binlerce dosya) sahneyi yogunlastirabilir.
-                </p>
+          {error && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/70 px-3 py-2 text-xs text-red-100">
+              <TriangleAlert className="h-3.5 w-3.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {!error && !isPending && (
+            <div className="mt-3 space-y-2">
+              <p className="text-[11px] text-slate-500">
+                Ipuclari: Kucuk/orta boyutlu bir repo secmeye calis. Cok buyuk
+                monorepolar (binlerce dosya) sahneyi yogunlastirabilir.
+              </p>
+              {searchResults.length > 0 && (
+                <div className="max-h-32 overflow-auto rounded-xl border border-slate-800/80 bg-slate-950/70 p-2">
+                  <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+                    Arama Sonuclari ({searchResults.length})
+                  </p>
+                  <ul className="space-y-1 text-[11px] text-slate-200">
+                    {searchResults.map((path) => (
+                      <li key={path}>
+                        <button
+                          type="button"
+                          onClick={() => handleFileClick(path)}
+                          className="w-full truncate rounded-lg px-2 py-1 text-left hover:bg-slate-800/80 hover:text-emerald-200"
+                        >
+                          {path}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* 3D City karti */}
+        <div className="relative h-[480px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 shadow-2xl shadow-emerald-500/10">
+          {tree && <CityScene root={tree} onFileClick={handleFileClick} />}
 
           {/* Loading overlay */}
           {isPending && (
@@ -210,7 +291,7 @@ export default function Home() {
               </div>
             </div>
           )}
-        </div>
+    </div>
       </section>
 
       <CodeModal
@@ -220,6 +301,16 @@ export default function Home() {
         language={language}
         content={fileContent}
         loading={fileLoading}
+      />
+
+      <IntroModal
+        open={showIntro}
+        onClose={() => {
+          setShowIntro(false);
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem("code-city-intro-seen", "1");
+          }
+        }}
       />
     </AppShell>
   );
