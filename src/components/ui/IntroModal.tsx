@@ -30,7 +30,7 @@ export function IntroModal({ open, onClose }: IntroModalProps) {
           </h2>
           <p className="text-sm leading-relaxed text-slate-300">
             GitHub reposunu 3D bir siberpunk sehir olarak goruntuleyebilecegin,
-            deneysela bir yan proje. Dosyalar binalara, klasorler semtlere
+            deneysel bir yan proje. Dosyalar binalara, klasorler semtlere
             donusuyor; binalara tiklayarak kod icerigini acabilirsin.
           </p>
           <div className="rounded-xl border border-slate-800/80 bg-slate-950/70 p-3 text-xs text-slate-300">
